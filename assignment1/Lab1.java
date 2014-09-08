@@ -34,73 +34,58 @@ public class Lab1 {
 
         //TODO: Add Direction when adding CS to switch to be able to match the CS in a unique manner
 
-        CS six = new CS(1, true, "six");
-        CS seven = new CS(1, true, "seven");
-        CS eight = new CS(1, true, "eight");
-        CS nine = new CS(1, true, "nine");
-
 
         CS csOne = new CS(1, true, "one");
-        csOne.addSensor(new Sensor(2, 11));
         CS csTwo = new CS(1, true, "two");
-        csTwo.addSensor(new Sensor(2, 11));
-
-
         CS csThree = new CS(1, true, "three");
-        csThree.addSensor(new Sensor(3, 12));
-        csThree.addSensor(new Sensor(4, 11));
-        csThree.addSensor(new Sensor(4, 10));
-        csThree.addSensor(new Sensor(5, 9));
-
         CS csFour = new CS(1, true, "four");
-        csFour.addSensor(new Sensor(3, 9));
-        csFour.addSensor(new Sensor(16, 9));
-
         CS csFive = new CS(1, true, "five");
-        csFive.addSensor(new Sensor(3, 9));
-        csFive.addSensor(new Sensor(16, 9));
-
-
         CS csSix = new CS(1, true, "six");
-        csSix.addSensor(new Sensor(15, 10));
-        csSix.addSensor(new Sensor(14, 9));
-        csSix.addSensor(new Sensor(17, 8));
-        csSix.addSensor(new Sensor(16, 7));
-
         CS csSeven = new CS(1, true, "seven");
-        csSeven.addSensor(new Sensor(18, 7));
-
         CS csEight = new CS(1, true, "eight");
-        csEight.addSensor(new Sensor(18, 7));
-
         CS csNine = new CS(1, true, "nine");
-        csNine.addSensor(new Sensor(8, 8));
-        csNine.addSensor(new Sensor(7, 7));
-        csNine.addSensor(new Sensor(9, 7));
-        csNine.addSensor(new Sensor(8, 6));
+
 
         Switch one = new Switch(tsi);
         one.addCS(csOne, DIRECTION.down);
         one.addCS(csTwo, DIRECTION.down);
         one.addCS(csThree, DIRECTION.up);
+        one.addSensor(new Sensor(3, 12));
+        one.addSensor(new Sensor(4, 11));
+        one.addSensor(new Sensor(2, 11));
 
         Switch two = new Switch(tsi);
         two.addCS(csThree, DIRECTION.down);
         two.addCS(csFour, DIRECTION.up);
         two.addCS(csFive, DIRECTION.up);
+        two.addSensor(new Sensor(3, 9));
+        two.addSensor(new Sensor(4, 10));
+        two.addSensor(new Sensor(5, 9));
+
 
         Switch three = new Switch(tsi);
         three.addCS(csFour, DIRECTION.down);
         three.addCS(csFive, DIRECTION.down);
         three.addCS(csSix, DIRECTION.up);
+        three.addSensor(new Sensor(14, 9));
+        three.addSensor(new Sensor(15, 10));
+        three.addSensor(new Sensor(16, 9));
 
         Switch four = new Switch(tsi);
         four.addCS(csSix, DIRECTION.down);
         four.addCS(csSeven, DIRECTION.up);
         four.addCS(csEight, DIRECTION.up);
+        four.addSensor(new Sensor(18, 7));
+        four.addSensor(new Sensor(15, 10));
+        four.addSensor(new Sensor(16, 7));
+
 
         Switch five = new Switch(tsi);
         five.addCS(csNine, DIRECTION.noDirection);
+        five.addSensor(new Sensor(8, 8));
+        five.addSensor(new Sensor(7, 7));
+        five.addSensor(new Sensor(9, 7));
+        five.addSensor(new Sensor(8, 6));
 
         HashSet<Switch> switches = new HashSet<Switch>();
         switches.add(one);
@@ -158,26 +143,42 @@ public class Lab1 {
                 while (true) {
 
                     SensorEvent e = tsi.getSensor(trainId);
+                    if(e.getStatus() == SensorEvent.INACTIVE)
+                        continue;
+
                     for (Switch s : switches) {
-                        Set<CS> css = s.getCS().keySet();
-                        for (CS cs : css) {
-                            for (Sensor sensor : cs.getSenors()) {
-                                DIRECTION direction = s.getCS().get(cs);
-                                //System.err.println(direction +" "+getDirection());
-                                if (sensor.equals(e) && e.getStatus() == SensorEvent.ACTIVE) {
+                        for(Sensor sen : s.sensors) {
 
-                                    if (direction == getDirection()) {
-                                            //TODO: if multiple critical sections are available pick ok and set the switch accordingly
-                                            tsi.setSpeed(trainId, 0);
-                                            cs.acquire();
-                                            tsi.setSpeed(trainId, initialSpeed);
-
+                            if(sen.equals(e)) {
+                                DIRECTION trainDirection = getDirection();
+                                for(CS cs: s.getCS().keySet()){
+                                   DIRECTION csDirection = s.getCS().get(cs);
+                                    //Acquiring
+                                    if(trainDirection == csDirection){
+                                        if(cs.availablePermits() == 0){
+                                            if(cs.occupiedByTrainId != trainId ){
+                                                System.err.println("Acquiring lock");
+                                                tsi.setSpeed(trainId, 0);
+                                                cs.acquire(trainId);
+                                                tsi.setSpeed(trainId, initialSpeed);
+                                            }
+                                        } else {
+                                            cs.acquire(trainId);
+                                        }
                                     }
-
+                                    //Releasing
+                                    else {
+                                        if(cs.availablePermits() == 0 && cs.occupiedByTrainId == trainId){
+                                            System.err.println("Releasing lock");
+                                            cs.release();
+                                        }
+                                    }
                                 }
                             }
+
                         }
                     }
+
 
                 }
             } catch (CommandException e) {
@@ -203,62 +204,66 @@ public class Lab1 {
             SensorEvent s = (SensorEvent) obj;
             return this.x == s.getXpos() && this.y == s.getYpos();
         }
-    }
-
-    class CS extends Semaphore {
-
-        String label;
-        HashSet<Sensor> sensors;
-
-        public CS(int permits, String label) {
-            super(permits);
-            this.label = label;
-            this.sensors = new HashSet<Sensor>();
-        }
-
-        public CS(int permits, boolean fair, String label) {
-            super(permits, fair);
-            this.label = label;
-            this.sensors = new HashSet<Sensor>();
-        }
-
-        public void addSensor(Sensor sensor) {
-            sensors.add(sensor);
-        }
-
-        public HashSet<Sensor> getSenors() {
-            return this.sensors;
-        }
 
         @Override
-        public void acquire() throws InterruptedException {
-            System.err.println("CS " + label + " is blocked");
-            super.acquire();
-        }
-
-        @Override
-        public void release() {
-            System.err.println("CS " + label + " is released");
-            super.release();
+        public String toString() {
+            return "Sensor: "+x+" "+y;
         }
     }
+
 
     class Switch {
 
         TSimInterface tsi;
         Map<CS, DIRECTION> cssWithDirection;
+        HashSet<Sensor> sensors;
 
         public Switch(TSimInterface tsi) {
             this.tsi = tsi;
             this.cssWithDirection = new HashMap<CS, DIRECTION>();
+            this.sensors = new HashSet<Sensor>();
         }
 
         public void addCS(CS cs, DIRECTION dir) {
             cssWithDirection.put(cs, dir);
         }
 
+        public void addSensor(Sensor s){
+            sensors.add(s);
+        }
+
         public Map<CS, DIRECTION> getCS() {
             return this.cssWithDirection;
+        }
+    }
+
+    class CS extends Semaphore {
+        String label;
+        int occupiedByTrainId;
+
+
+        public CS(int permits, String label) {
+            super(permits);
+            this.label = label;
+        }
+
+        public CS(int permits, boolean fair, String label) {
+            super(permits, fair);
+            this.label = label;
+        }
+
+
+        public void acquire(int trainId) throws InterruptedException {
+            System.err.println("CS "+label+" acquired by "+trainId);
+            super.acquire();
+            this.occupiedByTrainId = trainId;
+        }
+
+        @Override
+        public void release() {
+            System.err.println("CS "+label+" released by "+occupiedByTrainId);
+            super.release();
+            occupiedByTrainId = -1;
         }
     }
 
