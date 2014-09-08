@@ -1,8 +1,8 @@
 import TSim.CommandException;
 import TSim.SensorEvent;
-import TSim.TSimInformation;
 import TSim.TSimInterface;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -17,11 +17,13 @@ public class Lab1 {
         new Lab1(args);
     }
 
+    public static Collection<CS> initCSs(){
+
+    }
+
     public Lab1(String[] args) {
 
         TSimInterface tsi = TSimInterface.getInstance();
-
-
         int train1Speed = Integer.parseInt(args[0]);
         int train2speed = Integer.parseInt(args[1]);
         simSpeed = Integer.parseInt(args[2]);
@@ -85,17 +87,15 @@ public class Lab1 {
     }
 
 
-    class CS{
-        private Collection<Sensor> sensors;
-        Semaphore semaphore = new Semaphore(1, true);
+    class CS extends Semaphore{
 
-        public  CS(Collection<Sensor> sensors){
-            this.sensors = sensors;
+        public CS(int permits) {
+            super(permits);
         }
 
-
-
-
+        public CS(int permits, boolean fair) {
+            super(permits, fair);
+        }
     }
 
 
