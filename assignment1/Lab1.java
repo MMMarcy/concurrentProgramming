@@ -46,46 +46,46 @@ public class Lab1 {
         CS csNine = new CS(1, true, "nine");
 
 
-        Switch one = new Switch(tsi);
+        Switch one = new Switch(tsi, 3 ,11);
         one.addCS(csOne, DIRECTION.down);
         one.addCS(csTwo, DIRECTION.down);
         one.addCS(csThree, DIRECTION.up);
-        one.addSensor(new Sensor(3, 12));
-        one.addSensor(new Sensor(4, 11));
-        one.addSensor(new Sensor(2, 11));
+        one.addSensor(new Sensor(3, 12, DIRECTION.down));
+        one.addSensor(new Sensor(4, 11, DIRECTION.down));
+        one.addSensor(new Sensor(2, 11, DIRECTION.up));
 
-        Switch two = new Switch(tsi);
+        Switch two = new Switch(tsi,4,9);
         two.addCS(csThree, DIRECTION.down);
         two.addCS(csFour, DIRECTION.up);
         two.addCS(csFive, DIRECTION.up);
-        two.addSensor(new Sensor(3, 9));
-        two.addSensor(new Sensor(4, 10));
-        two.addSensor(new Sensor(5, 9));
+        two.addSensor(new Sensor(3, 9, DIRECTION.down));
+        two.addSensor(new Sensor(4, 10, DIRECTION.up));
+        two.addSensor(new Sensor(5, 9, DIRECTION.up));
 
 
-        Switch three = new Switch(tsi);
+        Switch three = new Switch(tsi,15,9);
         three.addCS(csFour, DIRECTION.down);
         three.addCS(csFive, DIRECTION.down);
         three.addCS(csSix, DIRECTION.up);
-        three.addSensor(new Sensor(14, 9));
-        three.addSensor(new Sensor(15, 10));
-        three.addSensor(new Sensor(16, 9));
+        three.addSensor(new Sensor(14, 9, DIRECTION.down));
+        three.addSensor(new Sensor(15, 10, DIRECTION.down));
+        three.addSensor(new Sensor(16, 9, DIRECTION.up));
 
-        Switch four = new Switch(tsi);
+        Switch four = new Switch(tsi,17,7);
         four.addCS(csSix, DIRECTION.down);
         four.addCS(csSeven, DIRECTION.up);
         four.addCS(csEight, DIRECTION.up);
-        four.addSensor(new Sensor(18, 7));
-        four.addSensor(new Sensor(15, 10));
-        four.addSensor(new Sensor(16, 7));
+        four.addSensor(new Sensor(18, 7, DIRECTION.down));
+        four.addSensor(new Sensor(15, 10, DIRECTION.up));
+        four.addSensor(new Sensor(16, 7, DIRECTION.up));
 
 
-        Switch five = new Switch(tsi);
+        Switch five = new Switch(tsi, -1, -1);
         five.addCS(csNine, DIRECTION.noDirection);
-        five.addSensor(new Sensor(8, 8));
-        five.addSensor(new Sensor(7, 7));
-        five.addSensor(new Sensor(9, 7));
-        five.addSensor(new Sensor(8, 6));
+        five.addSensor(new Sensor(8, 8, DIRECTION.noDirection));
+        five.addSensor(new Sensor(7, 7, DIRECTION.noDirection));
+        five.addSensor(new Sensor(9, 7, DIRECTION.noDirection));
+        five.addSensor(new Sensor(8, 6, DIRECTION.noDirection));
 
         HashSet<Switch> switches = new HashSet<Switch>();
         switches.add(one);
@@ -93,6 +93,14 @@ public class Lab1 {
         switches.add(three);
         switches.add(four);
         switches.add(five);
+
+        //Right is UP
+        try {
+            tsi.setSwitch(15,9, TSimInterface.SWITCH_RIGHT);
+            tsi.setSwitch(17,7, TSimInterface.SWITCH_RIGHT);
+        } catch (CommandException e) {
+            e.printStackTrace();
+        }
 
         Train t1 = new Train(1, train1Speed, tsi, switches);
         Train t2 = new Train(2, train2speed, tsi, switches);
@@ -139,7 +147,6 @@ public class Lab1 {
         public void run() {
             try {
                 tsi.setSpeed(trainId, initialSpeed);
-
                 while (true) {
 
                     SensorEvent e = tsi.getSensor(trainId);
@@ -151,24 +158,50 @@ public class Lab1 {
 
                             if(sen.equals(e)) {
                                 DIRECTION trainDirection = getDirection();
+
                                 for(CS cs: s.getCS().keySet()){
-                                   DIRECTION csDirection = s.getCS().get(cs);
+
+                                   DIRECTION csDirection = s.getCS().get(cs); //Getting the position of the CS compared to the switch considered
+
+                                    //Special case when hitting the cross junction
+                                    if(csDirection == DIRECTION.noDirection){
+                                        if(cs.occupiedByTrainId == trainId)
+                                            cs.release();
+                                        else {
+                                            tsi.setSpeed(trainId, 0);
+                                            cs.acquire(trainId);
+                                            tsi.setSpeed(trainId, initialSpeed);
+                                        }
+                                        break;
+                                    }
+
+
                                     //Acquiring
-                                    if(trainDirection == csDirection){
+                                    if(trainDirection == csDirection){    //Match the CS with the train direction compared to the current switch
                                         if(cs.availablePermits() == 0){
+                                            //Conditional statement that takes care of not blocking again the CS when hitting the sensor inside of it
                                             if(cs.occupiedByTrainId != trainId ){
                                                 System.err.println("Acquiring lock");
                                                 tsi.setSpeed(trainId, 0);
                                                 cs.acquire(trainId);
+
+
                                                 tsi.setSpeed(trainId, initialSpeed);
                                             }
+
                                         } else {
+                                            //We are going to a new critical section which is free and therefore we acquire it
                                             cs.acquire(trainId);
                                         }
                                     }
+
+
+
                                     //Releasing
                                     else {
-                                        if(cs.availablePermits() == 0 && cs.occupiedByTrainId == trainId){
+                                        //Conditional statement that checks if the CS that we left (before the switch) was occupied by ourself
+                                        //so it's released after exiting (after the switch)
+                                        if(cs.availablePermits() == 0 && cs.occupiedByTrainId == trainId && sen.relativeToSwitch == getDirection() ){
                                             System.err.println("Releasing lock");
                                             cs.release();
                                         }
@@ -193,10 +226,12 @@ public class Lab1 {
     class Sensor {
         int x;
         int y;
+        DIRECTION relativeToSwitch;
 
-        public Sensor(int x, int y) {
+        public Sensor(int x, int y, DIRECTION direction) {
             this.x = x;
             this.y = y;
+            this.relativeToSwitch = direction;
         }
 
         @Override
@@ -217,11 +252,15 @@ public class Lab1 {
         TSimInterface tsi;
         Map<CS, DIRECTION> cssWithDirection;
         HashSet<Sensor> sensors;
+        int x;
+        int y;
 
-        public Switch(TSimInterface tsi) {
+        public Switch(TSimInterface tsi, int x, int y) {
             this.tsi = tsi;
             this.cssWithDirection = new HashMap<CS, DIRECTION>();
             this.sensors = new HashSet<Sensor>();
+            this.x = x;
+            this.y = y;
         }
 
         public void addCS(CS cs, DIRECTION dir) {
