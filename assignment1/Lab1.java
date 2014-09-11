@@ -1,8 +1,10 @@
-import TSim.CommandException;
 import TSim.SensorEvent;
 import TSim.TSimInterface;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -16,7 +18,6 @@ public class Lab1 {
         down, up, noDirection
     }
 
-
     public static void main(String[] args) {
         try {
             new Lab1(args);
@@ -25,21 +26,12 @@ public class Lab1 {
         }
     }
 
-    public static Collection<CS> initCSs() {
-        return null;
-    }
-
     public Lab1(String[] args) throws Exception {
-
 
         TSimInterface tsi = TSimInterface.getInstance();
         int train1Speed = Integer.parseInt(args[0]);
         int train2speed = Integer.parseInt(args[1]);
         simSpeed = Integer.parseInt(args[2]);
-
-
-        //TODO: Add Direction when adding CS to switch to be able to match the CS in a unique manner
-
 
         CS csOne = new CS(1, true, "one");
         CS csTwo = new CS(1, true, "two");
@@ -52,7 +44,6 @@ public class Lab1 {
         CS csEight = new CS(1, true, "eight");
         csEight.acquire(1);
         CS csNine = new CS(1, true, "nine");
-
 
         Switch one = new Switch(tsi, 3, 11);
         one.addCS(csOne, DIRECTION.down);
@@ -69,7 +60,6 @@ public class Lab1 {
         two.addSensor(new Sensor(1, 10, DIRECTION.down));
         two.addSensor(new Sensor(7, 10, DIRECTION.up));
         two.addSensor(new Sensor(8, 9, DIRECTION.up));
-
 
         Switch three = new Switch(tsi, 15, 9);
         three.addCS(csFour, DIRECTION.down);
@@ -102,20 +92,11 @@ public class Lab1 {
         switches.add(four);
         switches.add(five);
 
-        //Right is UP
-        try {
-            tsi.setSwitch(15, 9, TSimInterface.SWITCH_RIGHT);
-            tsi.setSwitch(17, 7, TSimInterface.SWITCH_RIGHT);
-        } catch (CommandException e) {
-            e.printStackTrace();
-        }
-
         Train t1 = new Train(1, train1Speed, tsi, switches);
         Train t2 = new Train(2, train2speed, tsi, switches);
         Executor executor = Executors.newFixedThreadPool(2);
         executor.execute(t1);
         executor.execute(t2);
-
     }
 
     class Train implements Runnable {
@@ -124,15 +105,19 @@ public class Lab1 {
         private TSimInterface tsi;
         private Integer initialSpeed;
         private HashSet<Switch> switches;
-        private Sensor stationSensor1 = new Sensor(14,13,DIRECTION.down);
-        private Sensor stationSensor2 = new Sensor(14,11,DIRECTION.down);
-        private Sensor stationSensor3 = new Sensor(14,5,DIRECTION.up);
-        private Sensor stationSensor4 = new Sensor(14,3,DIRECTION.up);
+        private Sensor stationSensor1 = new Sensor(14, 13, DIRECTION.down);
+        private Sensor stationSensor2 = new Sensor(14, 11, DIRECTION.down);
+        private Sensor stationSensor3 = new Sensor(14, 5, DIRECTION.up);
+        private Sensor stationSensor4 = new Sensor(14, 3, DIRECTION.up);
 
+        public Train(int trainId, int initialSpeed, TSimInterface tsi, HashSet<Switch> switches) {
+            this.trainId = trainId;
+            this.initialSpeed = initialSpeed;
+            this.tsi = tsi;
+            this.switches = switches;
+        }
 
-
-
-        public DIRECTION getDirection() {
+        public DIRECTION getTrainDIrection() {
             if (this.trainId == 1) {
                 if (this.initialSpeed < 0) {
                     return DIRECTION.up;
@@ -148,53 +133,44 @@ public class Lab1 {
             }
         }
 
-        private void stopAtStation() throws Exception{
+        private void stopAtStation() throws Exception {
             tsi.setSpeed(trainId, 0);
             TimeUnit.SECONDS.sleep(2);
             initialSpeed *= -1;
             tsi.setSpeed(trainId, initialSpeed);
         }
 
-
-        public Train(int trainId, int initialSpeed, TSimInterface tsi, HashSet<Switch> switches) {
-            this.trainId = trainId;
-            this.initialSpeed = initialSpeed;
-            this.tsi = tsi;
-            this.switches = switches;
-        }
-
         @Override
         public void run() {
             try {
                 tsi.setSpeed(trainId, initialSpeed);
+
                 while (true) {
 
                     SensorEvent e = tsi.getSensor(trainId);
 
-                    if(stationSensor1.equals(e) || stationSensor2.equals(e)) {
-                        System.err.println("inside if 1");
-                        if (getDirection() == stationSensor1.relativeToSwitch) {
-                            stopAtStation();
-                            continue;
-                        }
-                    }
-
-                    if(stationSensor3.equals(e) || stationSensor4.equals(e)) {
-                        System.err.println("inside if 2");
-                        if (getDirection() == stationSensor3.relativeToSwitch) {
-                            stopAtStation();
-                            continue;
-                        }
-                    }
-
-
                     if (e.getStatus() == SensorEvent.INACTIVE)
                         continue;
 
+                    //Special cases to check if the sensors triggered are the one in the station
+                    if (stationSensor1.isOwnerOfEvents(e) || stationSensor2.isOwnerOfEvents(e)) {
+                        System.err.println("inside if 1");
+                        if (getTrainDIrection() == stationSensor1.relativeToSwitch) {
+                            stopAtStation();
+                            continue;
+                        }
+                    } else if (stationSensor3.isOwnerOfEvents(e) || stationSensor4.isOwnerOfEvents(e)) {
+                        System.err.println("inside if 2");
+                        if (getTrainDIrection() == stationSensor3.relativeToSwitch) {
+                            stopAtStation();
+                            continue;
+                        }
+                    }
+
                     for (Switch s : switches) {
                         for (Sensor sen : s.sensors) {
-                            if (sen.equals(e)) {
-                                DIRECTION trainDirection = getDirection();
+                            if (sen.isOwnerOfEvents(e)) {
+                                DIRECTION trainDirection = getTrainDIrection();
 
                                 if (!s.isSpecialCase()) {
                                     s.acquireCS(trainDirection, trainId, initialSpeed);
@@ -202,20 +178,15 @@ public class Lab1 {
                                 } else {
                                     s.handleSpecialCase(trainId, initialSpeed);
                                 }
-
                             }
-
                         }
                     }
-
-
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
-
 
     class Switch {
 
@@ -233,10 +204,10 @@ public class Lab1 {
             this.y = y;
         }
 
-        private void changeSwitchDirection(int direction) throws Exception{
+        private void changeSwitchDirection(int direction) throws Exception {
             int realDirection = direction;
-            if(this.x == 3 || this.x == 4)
-                if(direction == 1)
+            if (this.x == 3 || this.x == 4)
+                if (direction == 1)
                     realDirection = 2;
                 else
                     realDirection = 1;
@@ -256,19 +227,15 @@ public class Lab1 {
                 if (cs.occupiedByTrainId == trainId && trainDirection == csDirection)
                     return;
 
-
-
                 if (trainDirection == csDirection) {
                     temp.add(cs);
                 }
-
             }
 
             if (temp.size() == 0)
                 return;
 
-            CS cs = null;
-
+            CS cs;
             if (temp.size() == 1) {
                 cs = temp.get(0);
             } else {
@@ -281,32 +248,12 @@ public class Lab1 {
 
             tsi.setSpeed(trainId, 0);
             cs.acquire(trainId);
-            System.err.println("currently in "+currentlyIn.label);
-            System.err.println("going to "+cs.label);
-            if (currentlyIn.label.equals("one") || cs.label.equals("one") || currentlyIn.label.equals("four")
-                    || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven"))
+            if (currentlyIn != null && (currentlyIn.label.equals("one") || cs.label.equals("one") || currentlyIn.label.equals("four")
+                    || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven")))
                 changeSwitchDirection(TSimInterface.SWITCH_LEFT);
             else
                 changeSwitchDirection(TSimInterface.SWITCH_RIGHT);
             tsi.setSpeed(trainId, initialSpeed);
-
-                /*DIRECTION csDirection = cssWithDirection.get(cs); //Getting the position of the CS compared to the switch considered
-                if (trainDirection == csDirection) {    //Match the CS with the train direction compared to the current switch
-                    if (cs.availablePermits() == 0) {
-                        //Conditional statement that takes care of not blocking again the CS when hitting the sensor inside of it
-                        if (cs.occupiedByTrainId != trainId) {
-                            System.err.println("Acquiring lock");
-                            tsi.setSpeed(trainId, 0);
-                            cs.acquire(trainId);
-                            tsi.setSpeed(trainId, initialSpeed);
-                        }
-
-                    } else {
-                        //We are going to a new critical section which is free and therefore we acquire it
-                        cs.acquire(trainId);
-                    }
-                }*/
-
         }
 
         public void releaseCS(DIRECTION trainDirection, int trainId, int initialSpeed, Sensor sen) throws Exception {
@@ -334,13 +281,8 @@ public class Lab1 {
             sensors.add(s);
         }
 
-        public Map<CS, DIRECTION> getCS() {
-            return this.cssWithDirection;
-        }
-
         public boolean isSpecialCase() {
             return (cssWithDirection.get(cssWithDirection.keySet().iterator().next()) == DIRECTION.noDirection);
-
         }
 
         public void handleSpecialCase(int trainId, int initialSpeed) throws Exception {
@@ -366,15 +308,8 @@ public class Lab1 {
             this.relativeToSwitch = direction;
         }
 
-        @Override
-        public boolean equals(Object obj) {
-            SensorEvent s = (SensorEvent) obj;
+        public boolean isOwnerOfEvents(SensorEvent s) {
             return this.x == s.getXpos() && this.y == s.getYpos();
-        }
-
-        @Override
-        public String toString() {
-            return "Sensor: " + x + " " + y;
         }
     }
 
@@ -382,17 +317,10 @@ public class Lab1 {
         String label;
         int occupiedByTrainId;
 
-
-        public CS(int permits, String label) {
-            super(permits);
-            this.label = label;
-        }
-
         public CS(int permits, boolean fair, String label) {
             super(permits, fair);
             this.label = label;
         }
-
 
         public void acquire(int trainId) throws InterruptedException {
             super.acquire();
@@ -407,7 +335,4 @@ public class Lab1 {
             occupiedByTrainId = -1;
         }
     }
-
 }
-
-
