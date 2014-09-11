@@ -64,8 +64,8 @@ public class Lab1 {
 
         Switch two = new Switch(tsi, 4, 9);
         two.addCS(csThree, DIRECTION.down);
-        two.addCS(csFour, DIRECTION.up);
         two.addCS(csFive, DIRECTION.up);
+        two.addCS(csFour, DIRECTION.up);
         two.addSensor(new Sensor(1, 10, DIRECTION.down));
         two.addSensor(new Sensor(7, 10, DIRECTION.up));
         two.addSensor(new Sensor(8, 9, DIRECTION.up));
@@ -93,7 +93,7 @@ public class Lab1 {
         five.addSensor(new Sensor(10, 8, DIRECTION.noDirection));
         five.addSensor(new Sensor(6, 6, DIRECTION.noDirection));
         five.addSensor(new Sensor(11, 7, DIRECTION.noDirection));
-        five.addSensor(new Sensor(8, 5, DIRECTION.noDirection));
+        five.addSensor(new Sensor(10, 5, DIRECTION.noDirection));
 
         HashSet<Switch> switches = new HashSet<Switch>();
         switches.add(one);
