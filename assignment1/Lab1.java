@@ -1,11 +1,6 @@
-import TSim.SensorEvent;
-import TSim.TSimInterface;
-
+import TSim.*;
 import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class Lab1 {
 
@@ -54,7 +49,7 @@ public class Lab1 {
         two.addCS(csThree, DIRECTION.down);
         two.addCS(csFive, DIRECTION.up);
         two.addCS(csFour, DIRECTION.up);
-        two.addSensor(new Sensor(1, 10, DIRECTION.down));
+        two.addSensor(new Sensor(3, 9, DIRECTION.down));
         two.addSensor(new Sensor(7, 10, DIRECTION.up));
         two.addSensor(new Sensor(8, 9, DIRECTION.up));
 
