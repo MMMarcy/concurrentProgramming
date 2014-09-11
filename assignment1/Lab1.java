@@ -114,7 +114,7 @@ public class Lab1 {
             this.switches = switches;
         }
 
-        public DIRECTION getTrainDIrection() {
+        public DIRECTION getTrainDirection() {
             if (this.trainId == 1) {
                 if (this.initialSpeed < 0) {
                     return DIRECTION.up;
@@ -152,13 +152,13 @@ public class Lab1 {
                     //Special cases to check if the sensors triggered are the one in the station
                     if (stationSensor1.isOwnerOfEvents(e) || stationSensor2.isOwnerOfEvents(e)) {
                         System.err.println("inside if 1");
-                        if (getTrainDIrection() == stationSensor1.relativeToSwitch) {
+                        if (getTrainDirection() == stationSensor1.relativeToSwitch) {
                             stopAtStation();
                             continue;
                         }
                     } else if (stationSensor3.isOwnerOfEvents(e) || stationSensor4.isOwnerOfEvents(e)) {
                         System.err.println("inside if 2");
-                        if (getTrainDIrection() == stationSensor3.relativeToSwitch) {
+                        if (getTrainDirection() == stationSensor3.relativeToSwitch) {
                             stopAtStation();
                             continue;
                         }
@@ -167,7 +167,7 @@ public class Lab1 {
                     for (Switch s : switches) {
                         for (Sensor sen : s.sensors) {
                             if (sen.isOwnerOfEvents(e)) {
-                                DIRECTION trainDirection = getTrainDIrection();
+                                DIRECTION trainDirection = getTrainDirection();
 
                                 if (!s.isSpecialCase()) {
                                     s.acquireCS(trainDirection, trainId, initialSpeed);
