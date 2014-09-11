@@ -1,3 +1,5 @@
+//Lab group 5: Anders Gustafsson, Marcello Steiner
+
 Our solution tries to be as generic as possible. In fact, the "hardcoded" sections are limited to
 instantiate the sensor with their own position and to the direction of the switch according to the
 critical section and sensors. In order to achieve this kind of result we decided to put the Switch entity
