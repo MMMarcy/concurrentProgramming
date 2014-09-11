@@ -6,6 +6,7 @@ public class Lab1 {
 
     int simSpeed;
 
+    // Utility field to keep track of sensors and critical sections relative position to their switch
     public enum DIRECTION {
         down, up, noDirection
     }
@@ -25,6 +26,7 @@ public class Lab1 {
         int train2speed = Integer.parseInt(args[1]);
         simSpeed = Integer.parseInt(args[2]);
 
+        // Initialization of all Critical sections, sensors and switches
         CS csOne = new CS(1, true, "one");
         CS csTwo = new CS(1, true, "two");
         csTwo.acquire(2);
@@ -141,35 +143,38 @@ public class Lab1 {
 
                     SensorEvent e = tsi.getSensor(trainId);
 
+                    // We consider only the active events
                     if (e.getStatus() == SensorEvent.INACTIVE)
                         continue;
 
-                    //Special cases to check if the sensors triggered are the one in the station
+                    // Special cases to check if the sensors triggered are the one in the station
                     if (stationSensor1.isOwnerOfEvents(e) || stationSensor2.isOwnerOfEvents(e)) {
-                        System.err.println("inside if 1");
+                        // If the train is going towards the station
                         if (getTrainDirection() == stationSensor1.relativeToSwitch) {
                             stopAtStation();
                             continue;
                         }
                     } else if (stationSensor3.isOwnerOfEvents(e) || stationSensor4.isOwnerOfEvents(e)) {
-                        System.err.println("inside if 2");
                         if (getTrainDirection() == stationSensor3.relativeToSwitch) {
                             stopAtStation();
                             continue;
                         }
                     }
 
+                    // Loops to find the switch that contains the triggered sensor
                     for (Switch s : switches) {
                         for (Sensor sen : s.sensors) {
                             if (sen.isOwnerOfEvents(e)) {
                                 DIRECTION trainDirection = getTrainDirection();
-
+                                // If the sensor triggered are not part of the X-crossing
                                 if (!s.isSpecialCase()) {
                                     s.acquireCS(trainDirection, trainId, initialSpeed);
                                     s.releaseCS(trainDirection, trainId, sen);
+                                // The sensor are related to the X-crossing
                                 } else {
                                     s.handleSpecialCase(trainId, initialSpeed);
                                 }
+                                break;
                             }
                         }
                     }
@@ -183,6 +188,7 @@ public class Lab1 {
     class Switch {
 
         TSimInterface tsi;
+        // Map of Critical section and their direction to the current switch
         Map<CS, DIRECTION> cssWithDirection;
         HashSet<Sensor> sensors;
         int x;
@@ -197,7 +203,9 @@ public class Lab1 {
         }
 
         private void changeSwitchDirection(int direction) throws Exception {
+            // Direction of
             int realDirection = direction;
+            // If the switch "points" north, then reverse switch flipping Left to Right
             if (this.x == 3 || this.x == 4)
                 if (direction == 1)
                     realDirection = 2;
@@ -208,43 +216,53 @@ public class Lab1 {
 
 
         public void acquireCS(DIRECTION trainDirection, int trainId, int initialSpeed) throws Exception {
-            LinkedList<CS> temp = new LinkedList<CS>();
+            LinkedList<CS> csToAcquire = new LinkedList<CS>();
             CS currentlyIn = null;
+            // Looping through the critical sections for the switch
             for (CS cs : cssWithDirection.keySet()) {
                 DIRECTION csDirection = cssWithDirection.get(cs); //Getting the position of the CS compared to the switch considered
 
+                // If the critical section is occupied by the train itself, then the train is already in the current critical section
                 if (cs.occupiedByTrainId == trainId)
                     currentlyIn = cs;
 
+                // The train is already in the current section and in the same direction, so we the train does not have to acquire it again.
                 if (cs.occupiedByTrainId == trainId && trainDirection == csDirection)
                     return;
 
+                // If the train has the same direction into the switch as the critical section has, then we should acquire it:
                 if (trainDirection == csDirection) {
-                    temp.add(cs);
+                    csToAcquire.add(cs);
                 }
             }
 
-            if (temp.size() == 0)
+
+            if (csToAcquire.size() == 0)
                 return;
 
             CS cs;
             tsi.setSpeed(trainId, 0);
-            if (temp.size() == 1) {
-                cs = temp.get(0);
+            // If there is only one upcoming critical section
+            if (csToAcquire.size() == 1) {
+                cs = csToAcquire.get(0);
                 cs.acquire(trainId);
-            } else {
-                if (temp.get(0).tryAcquire(0, TimeUnit.SECONDS)) {
-                    System.err.println("Succeded with try-acquire "+ temp.get(0).label);
-                    cs = temp.get(0);
+            }
+            // There are more than one critical section to choose from, we have to choose the one who is free.
+            else {
+                // If the first one is free, we take that one
+                if (csToAcquire.get(0).tryAcquire(0, TimeUnit.SECONDS)) {
+                    cs = csToAcquire.get(0);
                     cs.occupiedByTrainId = trainId;
-                } else {
-                    cs = temp.get(1);
-                    System.err.println("Not succeded with t.a. "+ cs.label);
+                }
+                // We take the second one
+                else {
+                    cs = csToAcquire.get(1);
                     cs.acquire(trainId);
                 }
             }
 
             tsi.setSpeed(trainId, initialSpeed);
+            // After a train has acquired the wanted critical section, we need to check the switches
             if (currentlyIn != null && (currentlyIn.label.equals("one") || cs.label.equals("one") || currentlyIn.label.equals("four")
                     || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven")))
                 changeSwitchDirection(TSimInterface.SWITCH_LEFT);
@@ -261,7 +279,6 @@ public class Lab1 {
                     //Conditional statement that checks if the CS that we left (before the switch) was occupied by ourself
                     //so it's released after exiting (after the switch)
                     if (cs.occupiedByTrainId == trainId && sen.relativeToSwitch == trainDirection) {
-                        System.err.println("Releasing lock");
                         cs.release();
                     }
                 }
@@ -276,10 +293,12 @@ public class Lab1 {
             sensors.add(s);
         }
 
+        // If it is the X-crossing
         public boolean isSpecialCase() {
             return (cssWithDirection.get(cssWithDirection.keySet().iterator().next()) == DIRECTION.noDirection);
         }
 
+        // Handling the X-crossing
         public void handleSpecialCase(int trainId, int initialSpeed) throws Exception {
             CS cs = cssWithDirection.keySet().iterator().next();
             if (cs.occupiedByTrainId == trainId)
@@ -310,6 +329,7 @@ public class Lab1 {
 
     class CS extends Semaphore {
         String label;
+        // Train that owns the Semaphore when it is taken.
         int occupiedByTrainId;
 
         public CS(int permits, boolean fair, String label) {
@@ -319,14 +339,13 @@ public class Lab1 {
 
         public void acquire(int trainId) throws InterruptedException {
             super.acquire();
-            System.err.println("CS " + label + " acquired by " + trainId);
             this.occupiedByTrainId = trainId;
         }
 
         @Override
         public void release() {
-            System.err.println("CS " + label + " released by " + occupiedByTrainId);
             super.release();
+            // When the semaphore is free, the current train is -1.
             occupiedByTrainId = -1;
         }
     }
