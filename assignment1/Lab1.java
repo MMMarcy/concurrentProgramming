@@ -1,10 +1,7 @@
 import TSim.SensorEvent;
 import TSim.TSimInterface;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -135,7 +132,7 @@ public class Lab1 {
 
         private void stopAtStation() throws Exception {
             tsi.setSpeed(trainId, 0);
-            TimeUnit.SECONDS.sleep(2);
+            TimeUnit.MILLISECONDS.sleep(1000 + 2 * simSpeed * Math.abs(initialSpeed));
             initialSpeed *= -1;
             tsi.setSpeed(trainId, initialSpeed);
         }
@@ -268,9 +265,7 @@ public class Lab1 {
                         cs.release();
                     }
                 }
-
             }
-
         }
 
         public void addCS(CS cs, DIRECTION dir) {
