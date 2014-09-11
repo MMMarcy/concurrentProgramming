@@ -1,0 +1,16 @@
+Our solution tries to be as generic as possible. In fact, the "hardcoded" sections are limited to
+instantiate the sensor with their own position and to the direction of the switch according to the
+critical section. In order to achieve this kind of result we decided to put the Switch entity
+at top-level in the class hierarchy. This class contains the sensors associated with it and the
+critical sections connected to it. Certain instances of Critical sections are shared among consecutive
+switches. This configuration allows to a certain level to abstract from the map configuration.
+
+Our implementation uses a total of 20 sensors; 4 of them are reserved to stop trains at stations.
+Apart from that every switch uses 3 sensors and the X-cross section is represented by a dummy switch
+instance. This last case uses 4 sensors.
+
+Regarding the critical section choice we decided that every single track segment is a critical section.
+An additional one is used to control the train flow in the X-cross. This brings the total number
+of critical sections to 9.
+
+The

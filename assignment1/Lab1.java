@@ -171,7 +171,7 @@ public class Lab1 {
 
                                 if (!s.isSpecialCase()) {
                                     s.acquireCS(trainDirection, trainId, initialSpeed);
-                                    s.releaseCS(trainDirection, trainId, initialSpeed, sen);
+                                    s.releaseCS(trainDirection, trainId, sen);
                                 } else {
                                     s.handleSpecialCase(trainId, initialSpeed);
                                 }
@@ -233,18 +233,23 @@ public class Lab1 {
                 return;
 
             CS cs;
+            tsi.setSpeed(trainId, 0);
             if (temp.size() == 1) {
                 cs = temp.get(0);
+                cs.acquire(trainId);
             } else {
-                if (temp.get(0).availablePermits() == 0) {
-                    cs = temp.get(1);
-                } else {
+                if (temp.get(0).tryAcquire(0, TimeUnit.SECONDS)) {
+                    System.err.println("Succeded with try-acquire "+ temp.get(0).label);
                     cs = temp.get(0);
+                    cs.occupiedByTrainId = trainId;
+                } else {
+                    cs = temp.get(1);
+                    System.err.println("Not succeded with t.a. "+ cs.label);
+                    cs.acquire(trainId);
                 }
             }
 
-            tsi.setSpeed(trainId, 0);
-            cs.acquire(trainId);
+            tsi.setSpeed(trainId, initialSpeed);
             if (currentlyIn != null && (currentlyIn.label.equals("one") || cs.label.equals("one") || currentlyIn.label.equals("four")
                     || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven")))
                 changeSwitchDirection(TSimInterface.SWITCH_LEFT);
@@ -253,14 +258,14 @@ public class Lab1 {
             tsi.setSpeed(trainId, initialSpeed);
         }
 
-        public void releaseCS(DIRECTION trainDirection, int trainId, int initialSpeed, Sensor sen) throws Exception {
+        public void releaseCS(DIRECTION trainDirection, int trainId, Sensor sen) throws Exception {
             for (CS cs : cssWithDirection.keySet()) {
 
                 DIRECTION csDirection = cssWithDirection.get(cs); //Getting the position of the CS compared to the switch considered
                 if (trainDirection != csDirection) {
                     //Conditional statement that checks if the CS that we left (before the switch) was occupied by ourself
                     //so it's released after exiting (after the switch)
-                    if (cs.availablePermits() == 0 && cs.occupiedByTrainId == trainId && sen.relativeToSwitch == trainDirection) {
+                    if (cs.occupiedByTrainId == trainId && sen.relativeToSwitch == trainDirection) {
                         System.err.println("Releasing lock");
                         cs.release();
                     }
