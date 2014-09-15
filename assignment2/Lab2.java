@@ -43,14 +43,14 @@ public class Lab2 {
         // Initialization of all Critical sections, sensors and switches
         CS csOne = new CS("one");
         CS csTwo = new CS("two");
-        //csTwo.enter(2);
+        csTwo.enter(2);
         CS csThree = new CS("three");
         CS csFour = new CS("four");
         CS csFive = new CS("five");
         CS csSix = new CS("six");
         CS csSeven = new CS("seven");
         CS csEight = new CS("eight");
-        // csEight.enter(1);
+        csEight.enter(1);
         CS csNine = new CS("nine");
 
         Switch one = new Switch(tsi, 3, 11);
@@ -230,7 +230,7 @@ public class Lab2 {
 
 
         public void acquireCS(DIRECTION trainDirection, int trainId, int initialSpeed) throws Exception {
-            LinkedList<CS> csToAcquire = new LinkedList<CS>();
+            LinkedList<CS> csToLock = new LinkedList<CS>();
             CS currentlyIn = null;
             // Looping through the critical sections for the switch
             for (CS cs : cssWithDirection.keySet()) {
@@ -246,42 +246,44 @@ public class Lab2 {
 
                 // If the train has the same direction into the switch as the critical section has, then we should enter it:
                 if (trainDirection == csDirection) {
-                    csToAcquire.add(cs);
+                    csToLock.add(cs);
                 }
             }
 
 
-            if (csToAcquire.size() == 0)
+            if (csToLock.size() == 0)
                 return;
 
             CS cs;
-            tsi.setSpeed(trainId, 0);
             // If there is only one upcoming critical section
-            if (csToAcquire.size() == 1) {
-                cs = csToAcquire.get(0);
-                cs.enter(trainId);
+            if (csToLock.size() == 1) {
+                cs = csToLock.get(0);
             }
             // There are more than one critical section to choose from, we have to choose the one who is free.
             else {
                 // If the first one is free, we take that one
-                if (csToAcquire.get(0).tryEnter()) {
-                    cs = csToAcquire.get(0);
-                    cs.occupiedByTrainId = trainId;
+                if (csToLock.get(0).isFree) {
+                    cs = csToLock.get(0);
                 }
                 // We take the second one
                 else {
-                    cs = csToAcquire.get(1);
-                    cs.enter(trainId);
+                    cs = csToLock.get(1);
                 }
             }
+            tsi.setSpeed(trainId, 0);
 
-            tsi.setSpeed(trainId, initialSpeed);
+            cs.enter(trainId);
+
             // After a train has acquired the wanted critical section, we need to check the switches
             if (currentlyIn != null && (currentlyIn.label.equals("one") || cs.label.equals("one") || currentlyIn.label.equals("four")
-                    || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven")))
+                    || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven"))) {
+                System.err.println("Switch left");
                 changeSwitchDirection(TSimInterface.SWITCH_LEFT);
-            else
+            }
+            else {
+                System.err.println("Switch right");
                 changeSwitchDirection(TSimInterface.SWITCH_RIGHT);
+            }
             tsi.setSpeed(trainId, initialSpeed);
         }
 
@@ -316,7 +318,7 @@ public class Lab2 {
         public void handleSpecialCase(int trainId, int initialSpeed) throws Exception {
             CS cs = cssWithDirection.keySet().iterator().next();
             if (cs.occupiedByTrainId == trainId)
-                cs.enter(trainId);
+                cs.leave();
             else {
                 tsi.setSpeed(trainId, 0);
                 cs.enter(trainId);
@@ -345,6 +347,7 @@ public class Lab2 {
         String label;
         Lock lock = new ReentrantLock();
         Condition condition = lock.newCondition();
+        boolean isFree = true;
         // Train that owns the Semaphore when it is taken.
         int occupiedByTrainId;
 
@@ -355,23 +358,21 @@ public class Lab2 {
 
         public void enter(int trainId) throws InterruptedException {
             lock.lock();
-            if (tryEnter()) {
-                System.err.println("Inside if");
+            if(!isFree)
                 condition.await();
-            }
+            System.err.println("Cs "+this.label+" acquired by "+trainId);
             this.occupiedByTrainId = trainId;
-
-        }
-
-        public boolean tryEnter() throws InterruptedException {
-            return condition.await(1, TimeUnit.MILLISECONDS);
+            this.isFree = false;
+            lock.unlock();
         }
 
         public void leave() {
+            lock.lock();
             condition.signal();
-            lock.unlock();
-            // When the semaphore is free, the current train is -1.
+            System.err.println("Cs "+this.label+" released by "+occupiedByTrainId);
             occupiedByTrainId = -1;
+            isFree = true;
+            lock.unlock();
         }
     }
 }
