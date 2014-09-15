@@ -1,0 +1,36 @@
+//Lab group 5: Anders Gustafsson, Marcello Steiner
+
+Our solution tries to be as generic as possible. In fact, the "hardcoded" sections are limited to
+instantiate the sensor with their own position and to the direction of the switch according to the
+critical section and sensors. In order to achieve this kind of result we decided to put the Switch entity
+at top-level in the class hierarchy. This class contains both the sensors associated with it and the
+critical sections connected to this particular instance.
+
+The Critical Section class is a subtype of java.util.concurrent.Semaphore and, some of its instances are shared among consecutive switches.
+The critical section objects are added to switches with their relative position according to their switch.
+The position is indicated with an Enum with the following possible values: "Up,Down,NoDirection".
+The first two are from the point of view
+of a train going south to north, while the third one is a special case for the X-crossing.
+The sensor instances are instantiated with their relative position compared to their switches, which
+is determined exactly like in the Critical section class.
+With these information and the train direction that is extrapolated by the train-Id and the train speed
+our solution can determine which critical sections the train is leaving and the one that will encounter.
+This configuration allows to considerably abstract from the map configuration.
+
+Our implementation uses a total of 20 sensors; 4 of them are reserved to stop trains at stations.
+Apart from that every switch uses 3 sensors and the X-cross section is represented by a dummy switch
+instance. This last case uses 4 sensors.
+
+Regarding the critical section choice we decided that every single track segment is a critical section.
+An additional one is used to control the train flow in the X-cross. This brings the total number
+of critical sections to 9.
+
+The Maximum speed that our solution supports is 22. And the reason is that above this limit trains
+take too much space to stop and therefore will end up on a switch or on another critical section before
+stopping. We don't want to move the sensors too far away from their switches since otherwise the
+train flow is disrupted.
+
+The testing phase was carried on in an trial nd error fashion. This allow us to find the breaking point
+of our solution while having a nice train flow. In this phase we also tried different deltas in trains'
+speed. This process was repeated after every code change and sensor placement. Therefore the time spent
+on this task is considerable which give us a good level of confidence in our solution.
