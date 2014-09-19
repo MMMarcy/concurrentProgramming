@@ -1,12 +1,13 @@
 //Lab group 5: Anders Gustafsson, Marcello Steiner
 
-Our solution tries to be as generic as possible. In fact, the "hardcoded" sections are limited to
-instantiate the sensor with their own position and to the direction of the switch according to the
+Like in the firs assignment, our solution tries to be as generic as possible. In fact, the "hardcoded" 
+sections are limited to instantiate the sensor with their own position and to the direction of the switch according to the
 critical section and sensors. In order to achieve this kind of result we decided to put the Switch entity
 at top-level in the class hierarchy. This class contains both the sensors associated with it and the
 critical sections connected to this particular instance.
 
-The Critical Section class is a subtype of java.util.concurrent.Semaphore and, some of its instances are shared among consecutive switches.
+The Critical Section class contains a private field of type ReentrantLock from which we generate a condition
+trhough the newCondition() method. Some of its instances are shared among consecutive switches.
 The critical section objects are added to switches with their relative position according to their switch.
 The position is indicated with an Enum with the following possible values: "Up,Down,NoDirection".
 The first two are from the point of view
