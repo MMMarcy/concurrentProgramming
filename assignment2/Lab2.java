@@ -277,11 +277,9 @@ public class Lab2 {
             // After a train has acquired the wanted critical section, we need to check the switches
             if (currentlyIn != null && (currentlyIn.label.equals("one") || cs.label.equals("one") || currentlyIn.label.equals("four")
                     || cs.label.equals("four") || currentlyIn.label.equals("seven") || cs.label.equals("seven"))) {
-                System.err.println("Switch left");
                 changeSwitchDirection(TSimInterface.SWITCH_LEFT);
             }
             else {
-                System.err.println("Switch right");
                 changeSwitchDirection(TSimInterface.SWITCH_RIGHT);
             }
             tsi.setSpeed(trainId, initialSpeed);
@@ -348,7 +346,7 @@ public class Lab2 {
         Lock lock = new ReentrantLock();
         Condition condition = lock.newCondition();
         boolean isFree = true;
-        // Train that owns the Semaphore when it is taken.
+        // Train that owns the Critical Section when it is taken.
         int occupiedByTrainId;
 
 
@@ -360,7 +358,6 @@ public class Lab2 {
             lock.lock();
             if(!isFree)
                 condition.await();
-            System.err.println("Cs "+this.label+" acquired by "+trainId);
             this.occupiedByTrainId = trainId;
             this.isFree = false;
             lock.unlock();
@@ -369,7 +366,6 @@ public class Lab2 {
         public void leave() {
             lock.lock();
             condition.signal();
-            System.err.println("Cs "+this.label+" released by "+occupiedByTrainId);
             occupiedByTrainId = -1;
             isFree = true;
             lock.unlock();
