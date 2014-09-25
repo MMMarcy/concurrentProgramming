@@ -10,4 +10,4 @@
 % This record defines the structure of the 
 % server process. 
 % 
--record(server_st, {pid}).
+-record(server_st, {connectedClients}).

@@ -8,9 +8,14 @@
 %%%%%%%%%%%%%%%
 loop(St, {connect, _Server}) ->
     ServerPid = whereis(list_to_atom(_Server)),
-    NewState = St#cl_st{serverPid =  ServerPid},
-    genserver:request(ServerPid, "test message"),
-    {ok, NewState} ;
+    genserver:request(ServerPid, {connect, self()}),
+    {Result, NewState} =
+      receive
+        ok -> {ok, St#cl_st{serverPid =  ServerPid}};
+        user_already_connected -> {user_already_connected, St} ;
+        server_not_reached -> {server_not_reached, St}
+      end,
+    {Result, NewState} ;
 
 %%%%%%%%%%%%%%%
 %%%% Disconnect
