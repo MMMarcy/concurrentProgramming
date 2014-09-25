@@ -5,9 +5,9 @@
 %
 % gui: it stores the name (or Pid) of the GUI process.
 %
--record(cl_st, {gui}).
+-record(cl_st, {gui, serverPid=undefined}).
     
 % This record defines the structure of the 
 % server process. 
 % 
--record(server_st, {}).
+-record(server_st, {pid}).

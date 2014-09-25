@@ -7,12 +7,16 @@
 %%%% Connect
 %%%%%%%%%%%%%%%
 loop(St, {connect, _Server}) ->
-    {ok, St} ;
+    ServerPid = whereis(list_to_atom(_Server)),
+    NewState = St#cl_st{serverPid =  ServerPid},
+    genserver:request(ServerPid, "test message"),
+    {ok, NewState} ;
 
 %%%%%%%%%%%%%%%
 %%%% Disconnect
 %%%%%%%%%%%%%%%
 loop(St, disconnect) ->
+
      {ok, St} ;
 
 %%%%%%%%%%%%%%
@@ -31,6 +35,7 @@ loop(St, {leave, _Channel}) ->
 %%% Sending messages
 %%%%%%%%%%%%%%%%%%%%%
 loop(St, {msg_from_GUI, _Channel, _Msg}) ->
+
      {ok, St} ;
 
 
@@ -38,6 +43,7 @@ loop(St, {msg_from_GUI, _Channel, _Msg}) ->
 %%% WhoIam
 %%%%%%%%%%%%%%
 loop(St, whoiam) ->
+
     {"user01", St} ;
 
 %%%%%%%%%%

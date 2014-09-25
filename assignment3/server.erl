@@ -3,8 +3,10 @@
 
 -include_lib("./defs.hrl").
 
-loop(St, _Msg) -> 
-    {ok, St}. 
+loop(St, _Msg) ->
+  io:fwrite("@@@@@@@@@@@@@@@@@\n"),
+  io:fwrite(_Msg),
+  {ok, St}.
 
 
 initial_state(_Server) ->
