@@ -5,9 +5,9 @@
 %
 % gui: it stores the name (or Pid) of the GUI process.
 %
--record(cl_st, {gui, serverPid=undefined}).
+-record(cl_st, {gui, nick, serverPid=undefined, chatrooms=[]}).
     
 % This record defines the structure of the 
 % server process. 
 % 
--record(server_st, {connectedClients}).
+-record(server_st, {connectedClients, usedNicks}).
