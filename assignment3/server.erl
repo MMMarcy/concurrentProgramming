@@ -19,14 +19,11 @@ connect(St, Pid, Nick) ->
   case UsedPids:find(Pid) of
     error -> case UsedNicks:find(Nick) of
                error ->
-                 io:fwrite("Pid and Nick not found\n"),
                  {ok, St#server_st{connectedClients = UsedPids:append(Pid, ""), usedNicks = UsedNicks:append(Nick, "")}};
                _ ->
-                 io:fwrite("Pid and not found, nick found\n"),
                  {user_already_connected, St}
              end;
     _ ->
-      io:fwrite("Pid found\n"),
       {user_already_connected, St}
   end.
 
@@ -52,13 +49,17 @@ spawnChatLoop() ->
 
 chatLoop(St) ->
   receive
-    {join, Pid} -> case lists:member(Pid, St) of
-                     false -> chatLoop(lists:append(St, [Pid]));
-                     _ -> chatLoop(St)
-                   end;
-    {leave, Pid} -> chatLoop(lists:delete(Pid, St));
-    {msg, Channel, Pid, Msg, Nick} -> OtherClients = lists:delete(Pid, St),
-      io:fwrite("In chatloop, msg, Channel, Pid, Msg, Nick\n"),
+    {join, ClientPid} -> case lists:member(ClientPid, St) of
+                           false -> chatLoop(lists:append(St, [ClientPid]));
+                           _ -> chatLoop(St)
+                         end;
+    {leave, ClientPid, ServerPid} -> case lists:member(ClientPid, St) of
+                                       true -> genserver:request(ServerPid, ok),
+                                         chatLoop(lists:delete(ClientPid, St));
+                                       _ -> genserver:request(ServerPid, user_not_joined)
+                                     end;
+
+    {msg, Channel, Pid, Msg, Nick} -> OtherClients = St,%lists:delete(Pid, St),
       SendMessage = fun(ClientPid) -> genserver:request(ClientPid, {msg, {Channel, Nick, Msg}}) end,
       lists:foreach(SendMessage, OtherClients),
       chatLoop(St)
@@ -67,14 +68,15 @@ chatLoop(St) ->
 
 leaveChat(St, Pid, Chat) ->
   case whereis(list_to_atom(Chat)) of
-    ChatPid -> genserver:request(ChatPid, {leave, Pid})
+    ChatPid -> genserver:request(ChatPid, {leave, Pid, self()})
   end,
-  {ok, St}.
+  receive
+    Result -> {Result, St}
+  end.
 
 forwardMessage(St, Pid, Channel, Msg, Nick) ->
-  io:fwrite("In forwardMessage - " ++ Channel ++ "\n"),
   case whereis(list_to_atom(Channel)) of
-    ChatPid ->io:fwrite(debug_dictionary(ChatPid)), ChatPid ! {msg, Channel, Pid, Msg, Nick}
+    ChatPid -> ChatPid ! {msg, Channel, Pid, Msg, Nick}
   end,
   {ok, St}.
 
@@ -83,9 +85,3 @@ initial_state(_Server) ->
   #server_st{connectedClients = dict:new(), usedNicks = dict:new()}.
 
 
-debug_dictionary(Dict) ->
-  io:format("~p~n", [Dict]).
-
-debug_list(List) ->
-  Printer = fun(E) -> io:format("E: ~p~n", [E]) end,
-  lists:foreach(Printer, List).
