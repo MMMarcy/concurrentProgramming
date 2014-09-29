@@ -9,7 +9,7 @@ loop(St, _Msg) ->
     {disconnect, {Pid, Nick}} -> disconnect(St, Pid, Nick);
     {joinChat, {Pid, Chat}} -> joinChannel(St, Pid, Chat);
     {leaveChat, {Pid, Chat}} -> leaveChat(St, Pid, Chat);
-    {msg, {Pid, Channel, Message}} -> forwardMessage(St, Pid, Channel, Message)
+    {msg, {Pid, Channel, Message, Nick}} -> forwardMessage(St, Pid, Channel, Message, Nick)
   end.
 
 
@@ -57,21 +57,26 @@ chatLoop(St) ->
                      _ -> chatLoop(St)
                    end;
     {leave, Pid} -> chatLoop(lists:delete(Pid, St));
-    {msg, Pid, Msg} -> lists:delete(Pid, St)
+    {msg, Channel, Pid, Msg, Nick} -> OtherClients = lists:delete(Pid, St),
+      io:fwrite("In chatloop, msg, Channel, Pid, Msg, Nick\n"),
+      SendMessage = fun(ClientPid) -> genserver:request(ClientPid, {msg, {Channel, Nick, Msg}}) end,
+      lists:foreach(SendMessage, OtherClients),
+      chatLoop(St)
   end.
 
 
 leaveChat(St, Pid, Chat) ->
   case whereis(list_to_atom(Chat)) of
-    ChatPid -> ChatPid ! {leave, Pid}
+    ChatPid -> genserver:request(ChatPid, {leave, Pid})
   end,
   {ok, St}.
 
-forwardMessage(St, Pid, Channel, Msg) ->
+forwardMessage(St, Pid, Channel, Msg, Nick) ->
+  io:fwrite("In forwardMessage - " ++ Channel ++ "\n"),
   case whereis(list_to_atom(Channel)) of
-    ChatPid -> ChatPid ! {msg, Pid, Msg}
+    ChatPid ->io:fwrite(debug_dictionary(ChatPid)), ChatPid ! {msg, Channel, Pid, Msg, Nick}
   end,
-  {ok, St}
+  {ok, St}.
 
 
 initial_state(_Server) ->

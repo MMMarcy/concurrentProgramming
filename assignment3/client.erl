@@ -59,7 +59,7 @@ loop(St, {leave, _Channel}) ->
 loop(St, {msg_from_GUI, _Channel, _Msg}) ->
   case St#cl_st.serverPid of
     undefined -> {{error, not_connected, "Cannot perform action"}, St};
-    ServerPid -> case genserver:request(ServerPid, {msg, {self(), _Channel, _Msg}}) of
+    ServerPid -> case genserver:request(ServerPid, {msg, {self(), _Channel, _Msg, St#cl_st.nick}}) of
                    ok -> {ok, St};
                    _ -> io:fwrite("Something weird")
                  end
@@ -88,7 +88,9 @@ loop(St, debug) ->
 %%%% Incoming message
 %%%%%%%%%%%%%%%%%%%%%
 loop(St = #cl_st{gui = GUIName}, _MsgFromClient) ->
+  io:fwrite("before decompose \n"),
   {Channel, Name, Msg} = decompose_msg(_MsgFromClient),
+  io:fwrite("Vairables = "++Channel++ Name++ Msg++"\n"),
   gen_server:call(list_to_atom(GUIName), {msg_to_GUI, Channel, Name ++ "> " ++ Msg}),
   {ok, St}.
 
@@ -97,7 +99,9 @@ loop(St = #cl_st{gui = GUIName}, _MsgFromClient) ->
 % decomposed in the parts needed to tell the GUI to display
 % it in the right chat room.
 decompose_msg(_MsgFromClient) ->
-  {"", "", ""}.
+  case _MsgFromClient of
+    {_ ,{Channel, Nick, Msg}} -> {Channel, Nick, Msg}
+  end.
 
 
 initial_state(Nick, GUIName) ->
