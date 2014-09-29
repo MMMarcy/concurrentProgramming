@@ -41,7 +41,7 @@ loop(St, {join, _Channel}) ->
     _ -> case St#cl_st.serverPid of
            undefined -> {{error, not_connected, "Cannot perform action"}, St};
            ServerPid -> case genserver:request(ServerPid, {joinChat, {self(), _Channel}}) of
-                          ok -> {ok, St#cl_st{chatrooms = lists:append(St#cl_st.chatrooms,[_Channel])}};
+                          ok -> {ok, St#cl_st{chatrooms = lists:append(St#cl_st.chatrooms, [_Channel])}};
                           _ -> io:fwrite("Something weird")
                         end
          end
@@ -52,13 +52,17 @@ loop(St, {join, _Channel}) ->
 %%%% Leave
 %%%%%%%%%%%%%%%
 loop(St, {leave, _Channel}) ->
-  case St#cl_st.serverPid of
-    undefined -> {{error, user_not_connected, "Cannot perform action"}, St};
-    ServerPid -> case genserver:request(ServerPid, {leaveChat, {self(), _Channel}}) of
-                   ok -> {ok, St#cl_st{chatrooms = lists:delete(_Channel, St#cl_st.chatrooms)}};
-                   _ -> {error, user_not_joined, ""}
-                 end
+  case lists:member(_Channel, St#cl_st.chatrooms) of
+    true -> case St#cl_st.serverPid of
+              undefined -> {{error, user_not_connected, "Cannot perform action"}, St};
+              ServerPid -> case genserver:request(ServerPid, {leaveChat, {self(), _Channel}}) of
+                             ok -> {ok, St#cl_st{chatrooms = lists:delete(_Channel, St#cl_st.chatrooms)}};
+                             _ -> {error, user_not_joined, ""}
+                           end
+            end;
+    _ -> {{error, user_not_joined, "Not connected to chat"}, St}
   end;
+
 
 %%%%%%%%%%%%%%%%%%%%%
 %%% Sending messages
@@ -74,7 +78,6 @@ loop(St, {msg_from_GUI, _Channel, _Msg}) ->
             end;
     _ -> {{error, user_not_joined, ""}, St}
   end;
-
 
 
 %%%%%%%%%%%%%%

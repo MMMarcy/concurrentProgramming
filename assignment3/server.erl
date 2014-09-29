@@ -53,14 +53,13 @@ chatLoop(St) ->
                            false -> chatLoop(lists:append(St, [ClientPid]));
                            _ -> chatLoop(St)
                          end;
-    {leave, ClientPid, ServerPid} -> case lists:member(ClientPid, St) of
-                                       true -> genserver:request(ServerPid, ok),
-                                         chatLoop(lists:delete(ClientPid, St));
-                                       _ -> genserver:request(ServerPid, user_not_joined)
+    {leave, ClientPid} -> case lists:member(ClientPid, St) of
+                                       true -> chatLoop(lists:delete(ClientPid, St));
+                                       _ -> true
                                      end;
 
-    {msg, Channel, Pid, Msg, Nick} -> OtherClients = St,%lists:delete(Pid, St),
-      SendMessage = fun(ClientPid) -> genserver:request(ClientPid, {msg, {Channel, Nick, Msg}}) end,
+    {msg, Channel, ClientPid, Msg, Nick} -> OtherClients = lists:delete(ClientPid, St),
+      SendMessage = fun(OtherClientPid) -> genserver:request(OtherClientPid, {msg, {Channel, Nick, Msg}}) end,
       lists:foreach(SendMessage, OtherClients),
       chatLoop(St)
   end.
@@ -68,11 +67,9 @@ chatLoop(St) ->
 
 leaveChat(St, Pid, Chat) ->
   case whereis(list_to_atom(Chat)) of
-    ChatPid -> genserver:request(ChatPid, {leave, Pid, self()})
+    ChatPid -> ChatPid ! {leave, Pid}
   end,
-  receive
-    Result -> {Result, St}
-  end.
+  {ok, St}.
 
 forwardMessage(St, Pid, Channel, Msg, Nick) ->
   case whereis(list_to_atom(Channel)) of
