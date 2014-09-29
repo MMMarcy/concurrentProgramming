@@ -17,7 +17,7 @@ connect(St, Pid) ->
   Pid ! ok,
   {ok, NewState}.
 
-disconnect(St, pid) ->
+disconnect(St, Pid) ->
   St.
 
 

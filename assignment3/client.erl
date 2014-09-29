@@ -7,15 +7,24 @@
 %%%% Connect
 %%%%%%%%%%%%%%%
 loop(St, {connect, _Server}) ->
-    ServerPid = whereis(list_to_atom(_Server)),
-    genserver:request(ServerPid, {connect, self()}),
-    {Result, NewState} =
-      receive
-        ok -> {ok, St#cl_st{serverPid =  ServerPid}};
-        user_already_connected -> {user_already_connected, St} ;
-        server_not_reached -> {server_not_reached, St}
-      end,
-    {Result, NewState} ;
+    case whereis(list_to_atom(_Server)) of
+      undefined -> {{error, server_not_reached, "PID not found"}, St};
+      ServerPid -> case genserver:request(ServerPid, {connect, self()}) of
+                     ok -> {ok, St#cl_st{serverPid =  ServerPid}};
+                     user_already_connected -> {{error, user_already_connected, "The user is already connected" },St}
+                   end
+    end;
+
+
+    %{Result, NewState} =
+      %receive
+     %   ok -> {ok, St#cl_st{serverPid =  ServerPid}};
+      %  user_already_connected -> {user_already_connected, St} ;
+       % server_not_reached -> {server_not_reached, St
+        %  after 3000 ->
+
+      %end,
+
 
 %%%%%%%%%%%%%%%
 %%%% Disconnect
