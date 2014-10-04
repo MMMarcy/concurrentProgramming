@@ -6,6 +6,9 @@
 %%%%%%%%%%%%%%%
 %%%% Connect
 %%%%%%%%%%%%%%%
+% Sends a request containing clientPid and nick to the genserver that a client wants to connect to the server.
+% If the server is not registered; error, server_not_reached will be returned. 
+% If the connection gets ok from the server; ok, updated client state will be returned 
 loop(St, {connect, _Server}) ->
   case whereis(list_to_atom(_Server)) of
     undefined -> {{error, server_not_reached, "PID not found"}, St};
@@ -19,6 +22,10 @@ loop(St, {connect, _Server}) ->
 %%%%%%%%%%%%%%%
 %%%% Disconnect
 %%%%%%%%%%%%%%%
+% Sends a request containing clientPid and nick to the genserver that a client wants to disconnect from the server.
+% If the user is not connected; error, user_not_connected will be returned.
+% If the user is connected to a channel; error, leave_channel_first, the old state will be returned.
+% If the disconnect gets ok from the server; ok, updated client state will be returned. 
 loop(St, disconnect) ->
   case St#cl_st.chatrooms == [] of
     true -> case St#cl_st.serverPid of
@@ -35,6 +42,10 @@ loop(St, disconnect) ->
 %%%%%%%%%%%%%%
 %%% Join
 %%%%%%%%%%%%%%
+% Sends a request containing clientPid and channel name to the genserver that a client wants to join a channel.
+% If the user has already joined the channel; error, user_already_joined, the old state will be returned.
+% If the user is not connected to a server; error, user_not_connected, the old state will be returned.
+% If the join gets ok from the server; ok, updated client state will be returned. 
 loop(St, {join, _Channel}) ->
   case lists:member(_Channel, St#cl_st.chatrooms) of
     true -> {{error, user_already_joined, ""}, St};
@@ -51,6 +62,10 @@ loop(St, {join, _Channel}) ->
 %%%%%%%%%%%%%%%
 %%%% Leave
 %%%%%%%%%%%%%%%
+% Sends a request containing clientPid and channel name to the genserver that a client wants to leave a channel.
+% If the user is not in the channel; error, user_not_joined, the old state will be returned.
+% If the user is not connected to a server; error, user_not_connected, the old state will be returned.
+% If the join gets ok from the server; ok, updated client state will be returned.
 loop(St, {leave, _Channel}) ->
   case lists:member(_Channel, St#cl_st.chatrooms) of
     true -> case St#cl_st.serverPid of
@@ -67,6 +82,10 @@ loop(St, {leave, _Channel}) ->
 %%%%%%%%%%%%%%%%%%%%%
 %%% Sending messages
 %%%%%%%%%%%%%%%%%%%%%
+% Sends a request containing clientPid, channel, message and nick to the genserver that a msg should be sent.
+% If the user is not in the channel; error, user_not_joined, the old state will be returned.
+% If the user is not connected to a server; error, not_connected, the old state will be returned.
+% If the join gets ok from the server; ok, the old state.
 loop(St, {msg_from_GUI, _Channel, _Msg}) ->
   case lists:member(_Channel, St#cl_st.chatrooms) of
     true -> case St#cl_st.serverPid of
