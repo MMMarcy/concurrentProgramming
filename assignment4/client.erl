@@ -2,20 +2,45 @@
 -export([loop/2, initial_state/2]).
 
 -include_lib("./defs.hrl").
+-import(net_kernel, [connect_node/1]).
 
-%%%%%%%%%%%%%%%
-%%%% Connect
-%%%%%%%%%%%%%%%
-% Sends a request containing clientPid and nick to the genserver that a client wants to connect to the server.
-% If the server is not registered; error, server_not_reached will be returned. 
-% If the connection gets ok from the server; ok, updated client state will be returned 
-loop(St, {connect, _Server}) ->
+
+
+connectLocally(St, _Server) ->
   case whereis(list_to_atom(_Server)) of
     undefined -> {{error, server_not_reached, "PID not found"}, St};
     ServerPid -> case genserver:request(ServerPid, {connect, {self(), St#cl_st.nick}}) of
                    ok -> {ok, St#cl_st{serverPid = ServerPid}};
                    user_already_connected -> {{error, user_already_connected, "The user is already connected"}, St}
                  end
+  end.
+%%%%%%%%%%%%%%%
+%%%% Connect Remotely
+%%%%%%%%%%%%%%%
+% Sends a request containing clientPid and nick to the genserver that a client wants to connect to the server.
+% If the server is not registered; error, server_not_reached will be returned.
+% If the connection gets ok from the server; ok, updated client state will be returned
+connectRemotely(St, {_Server, Machine}) ->
+  case connect_node(list_to_atom(Machine)) of
+    true ->
+      case genserver:request({list_to_atom(_Server), list_to_atom(Machine)}, {connect, {self(), St#cl_st.nick}}) of
+        ok -> {ok, St#cl_st{serverPid = {list_to_atom(_Server), list_to_atom(Machine)}}};
+        user_already_connected -> {{error, user_already_connected, "The user is already connected"}, St}
+      end;
+    false -> {{error, server_not_reached, "PID or Remote machine not found"}, St}
+  end.
+
+
+%%%%%%%%%%%%%%%
+%%%% Connect
+%%%%%%%%%%%%%%%
+% Sends a request containing clientPid and nick to the genserver that a client wants to connect to the server.
+% If the server is not registered; error, server_not_reached will be returned.
+% If the connection gets ok from the server; ok, updated client state will be returned
+loop(St, {connect, Parameters}) ->
+  case Parameters of
+    {Server, Machine} -> connectRemotely(St, {Server, Machine});
+    Server -> connectLocally(St, Server)
   end;
 
 
