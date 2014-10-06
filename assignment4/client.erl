@@ -5,7 +5,10 @@
 -import(net_kernel, [connect_node/1]).
 
 
-
+%%%%%%%%%%%%%%%
+%%%% Connect Locally
+%%%%%%%%%%%%%%%
+% Function that handles the connection to a local server instance.
 connectLocally(St, _Server) ->
   case whereis(list_to_atom(_Server)) of
     undefined -> {{error, server_not_reached, "PID not found"}, St};
@@ -17,9 +20,8 @@ connectLocally(St, _Server) ->
 %%%%%%%%%%%%%%%
 %%%% Connect Remotely
 %%%%%%%%%%%%%%%
-% Sends a request containing clientPid and nick to the genserver that a client wants to connect to the server.
-% If the server is not registered; error, server_not_reached will be returned.
-% If the connection gets ok from the server; ok, updated client state will be returned
+% This function connects the client to a remote server. The only difference from the one above is that instead the pid
+% we also save the machine as a tuple.
 connectRemotely(St, {_Server, Machine}) ->
   case connect_node(list_to_atom(Machine)) of
     true ->
@@ -34,9 +36,7 @@ connectRemotely(St, {_Server, Machine}) ->
 %%%%%%%%%%%%%%%
 %%%% Connect
 %%%%%%%%%%%%%%%
-% Sends a request containing clientPid and nick to the genserver that a client wants to connect to the server.
-% If the server is not registered; error, server_not_reached will be returned.
-% If the connection gets ok from the server; ok, updated client state will be returned
+% Function that according to the parameters connect the client locally or remotely
 loop(St, {connect, Parameters}) ->
   case Parameters of
     {Server, Machine} -> connectRemotely(St, {Server, Machine});
