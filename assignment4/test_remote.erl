@@ -85,6 +85,7 @@ new_client_connect(GUI) ->
 new_gui(Node, GUIName) ->
     Me = self(),
     Pid = spawn(Node, dummy_gui, start_link, [GUIName,Me]),
+    timer:sleep(50),
     Pid.
 
 % --- Distributed tests ------------------------------------------------------
